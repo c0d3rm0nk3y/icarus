@@ -1,0 +1,25 @@
+{
+  "name": "icarus",
+  "version": "1.0.0",
+  "description": "news hunter",
+  "main": "app.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/c0d3rm0nk3y/icarus.git"
+  },
+  "keywords": [
+    "news",
+    "aggregator"
+  ],
+  "author": "monkey",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/c0d3rm0nk3y/icarus/issues"
+  },
+  "homepage": "https://github.com/c0d3rm0nk3y/icarus#readme"
+}
