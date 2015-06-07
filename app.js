@@ -1,12 +1,13 @@
 // app for code
 var rl = require('readline-sync');
 var  q = require('q');
-var rOptions = ["Explore DB?", "Query News.Google.Com?", "Find Feeds?"];
+var gn = require('./net/googleNews');
+var rOptions = ["Explore DB?", "Query news.google.com?", "Find Feeds?"];
 
 var init = function() {
   
   start()
-    .then(function() {return;}, function(err) {console.log(err);});
+    .then(function() {return;}, function(err) {console.log(JSON.stringify(err,null,2));});
     // .then(function() {return cont(); }, function(err) {})
     // .then(function(again) { if(!again) return; });
 
@@ -56,8 +57,13 @@ var option2 = function() {
   // query news.google.com
   var d = q.defer();
   try {
+    gn.queryNews()
+      .then(function(results) {
+        //console.log(JSON.stringify(results, null, 2));
+        d.resolve(results);
+        // d.resolve({msg: "thank you for playing, querying news.google.com is coming soon."});
+      },function(err) {d.reject(err);})
     
-    d.resolve({msg: "thank you for playing, querying news.google.com is coming soon."});
   } catch(ex) { d.reject({msg:"() exception.", ex: ex});}
   return d.promise;
 };
