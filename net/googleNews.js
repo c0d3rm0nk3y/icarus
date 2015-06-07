@@ -6,6 +6,10 @@ var rl = require('../node_modules/readline-sync');
 var h  = require('../node_modules/htmlstrip-native');
 var io = require('fs');
 
+// https://www.npmjs.com/package/async-q#parallelLimit
+
+// the above module could provide a tool to queue up a lot of readabilities.
+
 var o  = { include_script: false, include_style: false, compact_whitespace: true };
 var strip = function(text) {
   try {
@@ -26,7 +30,8 @@ exports.queryNews = function() {
     // if(quit) running = false;
     // rl.keyInPause(); // <--- this is big
     var keywords = rl.question("what are the keywords for search? ");
-    var url = buildUrl(keywords);
+    var count = 5;
+    var url = buildUrl(keywords,count);
     console.log(url);
     f(url,function(err, articles) {
       if(err) { console.log('feed-read() err: %s', err); d.reject({msg:"queryNew().feed-read() error", err: err}); } 
@@ -41,40 +46,34 @@ exports.queryNews = function() {
           articles.forEach(function(article) { sArticles.push(JSON.stringify(article, null ,2));  });
           procArticles(sArticles)
             .then(function(lastArticle) {
-              console.log('procArticles().then()..');
               // readArticlesS is the last in the chain, no forward propogation.
-              io.writeFile('queries/' + keywords + '.json', JSON.stringify(finishedArtciles,null,2),
-                function(err) {
-                  if(err) { console.log("write error..\n%s", JSON.stringify(err,null,2)); }
-                  else { console.log("Save successful"); }
-                });
-              displayLoop(finishedArtciles);
-              rl.keyInPause();
+              save(keywords).then(function(result) {
+                displayLoop(finishedArtciles);
+                rl.keyInPause();
+                
+                d.resolve(articles);  
+              }, function(err) {d.reject(err);});
+              
             }).catch(function(err){
               console.log('error:\n%s', err);
-            }) ;
-          // procArticles(sArticles)
-          //   .then(function(result) {
-          //     console.log('procArticles() result\n%s', JSON.stringify(result,null,2));
-          // }, function(err) { console.log("error: %s", error);});
-          
-          // var index = 1;
-          // articles.forEach(function(article){
-          //   var d = new Date(article.published);
-          //   console.log("%s) %s: %s",index, d.toLocaleString(), article.title);
-          //   index++;
-          // });
-          // var articleIndex = rl.keyIn('Which Article :', {limit: '${1-' + articles.length + '}'});
-          // console.log("you chose #%s.\n%s",articleIndex, articles[articleIndex-1].title);
-          // readArticle(articles[articleIndex - 1].link)
-          //   .then(function(result) {
-          //     d.resolve();
-          //   }, function(err) {d.reject(err);});
-          d.resolve(articles);
+            });
         }
       }
     });
   } catch(ex) { d.reject({msg: "", ex: ex}); }
+  return d.promise;
+};
+
+var save = function(keywords) {
+  var d = q.defer();
+  try {
+    io.writeFile('queries/' + keywords + '.json', JSON.stringify(finishedArtciles,null,2),
+    function(err) {
+      if(err) { console.log("write error..\n%s", JSON.stringify(err,null,2)); }
+      else { console.log("Save successful"); d.resolve({msg: "save succesfull"});}
+    });
+    
+  } catch(ex) { d.reject({msg:"save() exception", ex: ex}); }
   return d.promise;
 };
 
@@ -90,8 +89,6 @@ var procArticles = function(articles) {
     }, q.resolve());
     lastPromise
       .then(function(results) {
-        //console.log("lastPromise.then(results)\n%s", JSON.stringify(results,null,2));
-        
         d.resolve(results);
       }).catch(function(err) {
         d.reject({msg:"lastPromise().catch() error", err: err});
@@ -116,10 +113,10 @@ var procArt = function(sArticle) {
         console.log('node-readablity returned false.');
         d.resolve({msg: "node-readability could not parse the article."});
       } else {
-        console.log("success");
         oArt.text = strip(article.content);
         if(oArt !== undefined)
           finishedArtciles.push(oArt);
+          console.log("success %s", finishedArtciles.length);
         d.resolve(JSON.stringify(oArt,null,2));
       }
     });
@@ -181,11 +178,11 @@ var readArticle = function(link) {
   return d.promise;
 };
 
-var buildUrl = function(keywords) {
-  console.log('buildUrl(%s)', keywords);
+var buildUrl = function(keywords, count) {
+  console.log('buildUrl(%s, %s)', keywords,count);
   try {
     while(keywords.indexOf(' ') > -1) { keywords = keywords.replace(' ', '+'); }
     console.log(keywords);
-    return "https://news.google.com/news?pz=1&num=5&cf=all&ned=us&hl=en&cf=all&output=rss&q=" + keywords;
+    return "https://news.google.com/news?pz=1&num=" + count + "&cf=all&ned=us&hl=en&cf=all&output=rss&q=" + keywords;
   } catch(ex) {console.log("buildUrl() ex: %s", ex);}
 };
